@@ -1,0 +1,9 @@
+# 运行期依赖（已实测组合：fastapi 0.143.3 / uvicorn 0.54.0 / pydantic 2.14.1）
+#
+# 注意：python-fastapi 模板自带的 requirements.txt 停留在 pydantic v1 时代，
+# 内含 uvicorn==0.13.4、click==7.1.2、graphene==2.1.8 等陈旧条目，
+# 在 Python 3.12+ 上会冲突或需要编译。本文件已加入 .openapi-generator-ignore，
+# 重新生成时不会被模板覆盖回去。
+fastapi>=0.140,<1
+uvicorn[standard]>=0.54,<1
+python-multipart>=0.0.20

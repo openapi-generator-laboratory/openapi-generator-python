@@ -1,0 +1,412 @@
+openapi: 3.0.3
+
+info:
+  title: Kubernetes Deployment 管理 API
+  description: |
+    对 Kubernetes 集群中的 Deployment 资源进行增删改查与扩缩容的 REST 接口。
+
+    本文件是「唯一事实来源」：接口代码由 OpenAPI Generator（python-fastapi）从它生成，
+    接口定义变更时请改这里，然后重新执行 `scripts/generate` 脚本，不要手改生成物。
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 本地开发
+  - url: https://k8s.example.com/api/v1
+    description: 生产环境
+
+tags:
+  - name: deployment
+    description: Deployment 资源操作
+  - name: health
+    description: 健康检查
+
+paths:
+  /namespaces/{namespace}/deployments:
+    get:
+      tags:
+        - deployment
+      summary: 列出命名空间下的 Deployment
+      operationId: listNamespacedDeployments
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - name: labelSelector
+          in: query
+          required: false
+          description: 标签选择器，形如 app=nginx
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: 单次返回的最大条数
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Error'
+
+    post:
+      tags:
+        - deployment
+      summary: 创建 Deployment
+      operationId: createNamespacedDeployment
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Deployment'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: 同名 Deployment 已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+
+  /namespaces/{namespace}/deployments/{name}:
+    get:
+      tags:
+        - deployment
+      summary: 获取单个 Deployment
+      operationId: readNamespacedDeployment
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - $ref: '#/components/parameters/Name'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Deployment 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+
+    delete:
+      tags:
+        - deployment
+      summary: 删除 Deployment
+      operationId: deleteNamespacedDeployment
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - $ref: '#/components/parameters/Name'
+      responses:
+        '204':
+          description: 删除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Deployment 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+
+  /namespaces/{namespace}/deployments/{name}/scale:
+    put:
+      tags:
+        - deployment
+      summary: 调整 Deployment 副本数
+      operationId: scaleNamespacedDeployment
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - $ref: '#/components/parameters/Name'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScaleRequest'
+      responses:
+        '200':
+          description: 扩缩容成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Deployment 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+
+  /healthz:
+    get:
+      tags:
+        - health
+      summary: 健康检查
+      operationId: getHealthz
+      security: []
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "通过 Authorization: Bearer <token> 传入"
+
+  parameters:
+    Namespace:
+      name: namespace
+      in: path
+      required: true
+      description: Kubernetes 命名空间
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        minLength: 1
+        maxLength: 63
+    Name:
+      name: name
+      in: path
+      required: true
+      description: Deployment 名称
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        minLength: 1
+        maxLength: 253
+
+  responses:
+    BadRequest:
+      description: 请求参数不合法
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: 未授权或凭证无效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error:
+      description: 服务端内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Deployment:
+      type: object
+      required:
+        - name
+        - spec
+      properties:
+        name:
+          type: string
+          description: Deployment 名称
+          maxLength: 253
+          example: nginx-web
+        namespace:
+          type: string
+          description: 所属命名空间，创建场景下可不传（以路径参数为准）
+          example: default
+        labels:
+          type: object
+          description: 资源标签
+          additionalProperties:
+            type: string
+          example:
+            app: nginx
+            tier: frontend
+        spec:
+          $ref: '#/components/schemas/DeploymentSpec'
+        status:
+          $ref: '#/components/schemas/DeploymentStatus'
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+
+    DeploymentSpec:
+      type: object
+      required:
+        - replicas
+        - image
+      properties:
+        replicas:
+          type: integer
+          format: int32
+          description: 期望副本数
+          minimum: 0
+          maximum: 1000
+          default: 1
+          example: 3
+        image:
+          type: string
+          description: 容器镜像地址
+          example: nginx:1.25-alpine
+        port:
+          type: integer
+          format: int32
+          description: 容器监听端口
+          minimum: 1
+          maximum: 65535
+          default: 80
+        resources:
+          $ref: '#/components/schemas/ResourceRequirements'
+
+    DeploymentStatus:
+      type: object
+      properties:
+        availableReplicas:
+          type: integer
+          format: int32
+          description: 可用副本数
+          example: 3
+        readyReplicas:
+          type: integer
+          format: int32
+          example: 3
+        updatedReplicas:
+          type: integer
+          format: int32
+          example: 3
+        phase:
+          type: string
+          description: 当前状态
+          enum:
+            - Pending
+            - Running
+            - Succeeded
+            - Failed
+            - Unknown
+          default: Pending
+
+    ResourceRequirements:
+      type: object
+      properties:
+        cpu:
+          type: string
+          description: CPU 资源量，如 500m / 2
+          default: 500m
+          example: 500m
+        memory:
+          type: string
+          description: 内存资源量，如 512Mi / 1Gi
+          default: 512Mi
+          example: 512Mi
+
+    DeploymentList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deployment'
+        total:
+          type: integer
+          format: int32
+          description: 满足条件的总条数
+          example: 12
+
+    ScaleRequest:
+      type: object
+      required:
+        - replicas
+      properties:
+        replicas:
+          type: integer
+          format: int32
+          description: 目标副本数
+          minimum: 0
+          maximum: 1000
+          example: 5
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: 业务错误码
+          example: 500000
+        message:
+          type: string
+          description: 错误信息
+          example: internal server error
+        details:
+          type: string
+          description: 错误详情，便于排查
+          nullable: true
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - up
+            - down
+          default: up
+        version:
+          type: string
+          example: 1.0.0
+
+security:
+  - bearerAuth: []

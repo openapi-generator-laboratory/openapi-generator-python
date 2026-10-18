@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# 测试与静态检查
+pytest>=8
+httpx>=0.28
+ruff>=0.9

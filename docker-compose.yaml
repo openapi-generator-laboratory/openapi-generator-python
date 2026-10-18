@@ -1,0 +1,9 @@
+services:
+  service:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    # CMD 已在 Dockerfile 内（uvicorn openapi_server.app:app），此处无需覆盖
+    environment:
+      PYTHONPATH: /app/src
